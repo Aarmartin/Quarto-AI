@@ -1,4 +1,6 @@
+from tkinter import *
 
+from pip._vendor.distlib.compat import raw_input
 
 ################
 # Base Classes #
@@ -134,19 +136,68 @@ class State:
 		print("Current turn is:", self.turn)
 		print("Current available moves are:", self.moves)
 
+
 ################
 # Game Testing #
 ################
 
-board = Board(True)
-board.make_move(board.pieces[0], '1a')
-board.make_move(board.pieces[1], '1b')
-board.make_move(board.pieces[2], '1c')
-board.make_move(board.pieces[15], '1d')
-board.quarto()
-print(board.win)
+#board = Board(True)
+#board.make_move(board.pieces[0], '1a')
+#board.make_move(board.pieces[1], '1b')
+#board.make_move(board.pieces[2], '1c')
+#board.make_move(board.pieces[15], '1d')
+#board.quarto()
+#print(board.win)
 #board.printBoard()
 
-begin = State('Player', board.currentUtil('Player'), board, board.open)
+#begin = State('Player', board.currentUtil('Player'), board, board.open)
 
-begin.printState()
+#begin.printState()
+
+#######
+# GUI #
+#######
+
+class gameGUI:
+
+	def __init__(self, title="Quarto", geometry="800x500"):
+
+		board = Board(True)
+		self.currentState = State('Player', 0, board, board.open)
+
+		# Env
+		self.root  = Tk()
+		self.root.title(title)
+		self.root.geometry( geometry )
+
+		# Canvas
+		self.canvas = Canvas( self.root, width=500, height=500)
+		self.canvas.place(x=0,y=0)
+
+		# Mouse control
+		self.canvas.bind("<Button-1>", self.click)
+		self.waiting = BooleanVar()
+		self.waiting.set(1)
+		self.move = None
+
+		self.draw()
+
+	def draw(self):
+		for i in range(0,500,int(500/4)):
+			self.canvas.create_line(0,i,500,i);
+		for i in range(0,500,int(500/4)):
+			self.canvas.create_line(i,0,i,500)
+
+		self.root.update_idletasks()
+		self.root.update()
+
+	def click(self, event):
+		if not self.waiting.get(): return
+		self.move = (int(event.x/(500/4))+1, int(event.y/(500/4))+1)
+		print(self.move)
+		self.waiting.set(0)
+
+
+if __name__ == "__main__":
+	app = gameGUI()
+	app.root.mainloop()
