@@ -1,5 +1,9 @@
 
 
+################
+# Base Classes #
+################
+
 class Board:
 
 	# Create board
@@ -88,7 +92,8 @@ class Board:
 		print("Checking Zones")
 		for zone in self.zones:
 			if set(zone).issubset(set(self.occupied.keys())):
-				self.win = True
+				if bool(set(self.occupied[zone[0]].properties()) & set(self.occupied[zone[1]].properties()) & set(self.occupied[zone[2]].properties()) & set(self.occupied[zone[3]].properties())):
+					self.win = True
 		print("Zones Checked")
 		return self.win
 
@@ -114,6 +119,9 @@ class Piece:
 		self.fill = fill
 		self.winning = False
 
+	def properties(self):
+		return [ self.height, self.color, self.shape, self.fill ]
+
 class State:
 	def __init__(self, turn, util, board, moves, winning_move=None):
 		self.turn = turn
@@ -126,12 +134,17 @@ class State:
 		print("Current turn is:", self.turn)
 		print("Current available moves are:", self.moves)
 
+################
+# Game Testing #
+################
+
 board = Board(True)
-#board.make_move(board.pieces[0], '1a')
-#board.make_move(board.pieces[1], '1b')
-#board.make_move(board.pieces[2], '1c')
-#board.make_move(board.pieces[3], '2d')
-#board.quarto()
+board.make_move(board.pieces[0], '1a')
+board.make_move(board.pieces[1], '1b')
+board.make_move(board.pieces[2], '1c')
+board.make_move(board.pieces[15], '1d')
+board.quarto()
+print(board.win)
 #board.printBoard()
 
 begin = State('Player', board.currentUtil('Player'), board, board.open)
