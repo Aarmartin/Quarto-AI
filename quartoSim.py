@@ -1,4 +1,5 @@
 from tkinter import *
+import random
 
 from pip._vendor.distlib.compat import raw_input
 
@@ -81,10 +82,13 @@ class Board:
 			Piece("Short", "Dark", "Circle", "Hollow")
 		]
 
+		self.leftover = self.pieces
+
 	def make_move(self, piece, loc):
 		if loc in self.open and piece not in self.occupied.values():
 			self.occupied[loc] = piece
 			self.open.remove(loc)
+			self.leftover.remove(piece)
 			print("Successful move")
 		else:
 			print("Illegal move attempted")
@@ -120,6 +124,7 @@ class Piece:
 		self.shape = shape
 		self.fill = fill
 		self.winning = False
+		self.tag = self.height[:1] + self.color[:1] + self.shape[:1] + self.fill[:1]
 
 	def properties(self):
 		return [ self.height, self.color, self.shape, self.fill ]
@@ -145,7 +150,7 @@ class State:
 #board.make_move(board.pieces[0], '1a')
 #board.make_move(board.pieces[1], '1b')
 #board.make_move(board.pieces[2], '1c')
-#board.make_move(board.pieces[15], '1d')
+#board.make_move(board.pieces[4], '1d')
 #board.quarto()
 #print(board.win)
 #board.printBoard()
@@ -180,13 +185,48 @@ class gameGUI:
 		self.waiting.set(1)
 		self.move = None
 
+
+
+		self.control = Frame(self.root)
+		self.control.place(x=510, y=10)
+
+		Button(self.control, text="TLSS", command = lambda: self.setSelect(board.pieces[0])).pack(anchor=W,fill=X)
+		Button(self.control, text="TLSH", command = lambda: self.setSelect(board.pieces[1])).pack(anchor=W,fill=X)
+		Button(self.control, text="TLCS", command = lambda: self.setSelect(board.pieces[2])).pack(anchor=W,fill=X)
+		Button(self.control, text="TLCH", command = lambda: self.setSelect(board.pieces[3])).pack(anchor=W,fill=X)
+		Button(self.control, text="TDSS", command = lambda: self.setSelect(board.pieces[4])).pack(anchor=W,fill=X)
+		Button(self.control, text="TDSH", command = lambda: self.setSelect(board.pieces[5])).pack(anchor=W,fill=X)
+		Button(self.control, text="TDCS", command = lambda: self.setSelect(board.pieces[6])).pack(anchor=W,fill=X)
+		Button(self.control, text="TDCH", command = lambda: self.setSelect(board.pieces[7])).pack(anchor=W,fill=X)
+		Button(self.control, text="SLSS", command = lambda: self.setSelect(board.pieces[8])).pack(anchor=W,fill=X)
+		Button(self.control, text="SLSH", command = lambda: self.setSelect(board.pieces[9])).pack(anchor=W,fill=X)
+		Button(self.control, text="SLCS", command = lambda: self.setSelect(board.pieces[10])).pack(anchor=W,fill=X)
+		Button(self.control, text="SLCH", command = lambda: self.setSelect(board.pieces[11])).pack(anchor=W,fill=X)
+		Button(self.control, text="SDSS", command = lambda: self.setSelect(board.pieces[12])).pack(anchor=W,fill=X)
+		Button(self.control, text="SDSH", command = lambda: self.setSelect(board.pieces[13])).pack(anchor=W,fill=X)
+		Button(self.control, text="SDCS", command = lambda: self.setSelect(board.pieces[14])).pack(anchor=W,fill=X)
+		Button(self.control, text="SDCH", command = lambda: self.setSelect(board.pieces[15])).pack(anchor=W,fill=X)
+
 		self.draw()
 
-	def draw(self):
+		self.play()
+
+	def setSelect(self, piece):
+		self.selected = piece
+		print("Current Selection is now:", self.selected.tag)
+
+	def draw(self, content=False):
 		for i in range(0,500,int(500/4)):
-			self.canvas.create_line(0,i,500,i);
+			self.canvas.create_line(0,i,500,i)
 		for i in range(0,500,int(500/4)):
 			self.canvas.create_line(i,0,i,500)
+
+		if content:
+			for x, row in zip(range(4), ['1', '2', '3', '4']):
+				for y, col in zip(range(4), ['a', 'b', 'c', 'd']):
+					if (row+col) in self.currentState.board.occupied.keys():
+						self.canvas.create_text((x*(500/4)+(250/4), y*(500/4)+(250/4)), text = self.currentState.board.occupied[row+col].tag)
+
 
 		self.root.update_idletasks()
 		self.root.update()
@@ -194,8 +234,42 @@ class gameGUI:
 	def click(self, event):
 		if not self.waiting.get(): return
 		self.move = (int(event.x/(500/4))+1, int(event.y/(500/4))+1)
-		print(self.move)
-		self.waiting.set(0)
+		if self.move == (1, 1):
+			self.add = '1a'
+		elif self.move == (1, 2):
+			self.add = '1b'
+		print(self.add)
+		self.waiting.set(1)
+
+	def play(self):
+
+		while True:
+
+			self.add = None
+			while self.add not in self.currentState.board.occupied.keys():
+				self.waiting.set(1)
+
+			self.currentState.board.make_move(random.choice(self.currentState.board.leftover), random.choice(self.currentState.board.open))
+			self.currentState.board.printBoard()
+
+			self.draw(True)
+
+			if(self.currentState.board.quarto()):
+				print("Winner:", self.currentState.turn)
+				break
+
+			self.currentState.turn = "Computer"
+
+			self.currentState.board.make_move(random.choice(self.currentState.board.leftover), random.choice(self.currentState.board.open))
+			self.currentState.board.printBoard()
+
+			self.draw(True)
+
+			if(self.currentState.board.quarto()):
+				print("Winner", self.currentState.turn)
+				break
+
+			self.currentState.turn = "Player"
 
 
 if __name__ == "__main__":
