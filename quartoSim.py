@@ -1,4 +1,5 @@
 from tkinter import *
+from copy import deepcopy
 import random
 
 from pip._vendor.distlib.compat import raw_input
@@ -84,15 +85,21 @@ class Board:
 
 		self.leftover = self.pieces.copy()
 
+		self.lastPiece = None
+		self.lastLoc = None
+
+	# Performs a single move on the board and updates availability accordingly
 	def make_move(self, piece, loc):
 		if loc in self.open and piece not in self.occupied.values():
 			self.occupied[loc] = piece
 			self.open.remove(loc)
 			self.leftover.remove(piece)
 			print("Successful move")
+			self.last = piece
 		else:
 			print("Illegal move attempted")
 
+	# True if a zone on the current board contains a quarto, False if not,  updates wind status
 	def quarto(self):
 
 		print("Checking Zones")
@@ -103,6 +110,7 @@ class Board:
 		print("Zones Checked")
 		return self.win
 
+	# Provides utility of current board
 	def currentUtil(self, turn):
 		if self.quarto and turn == 'Player':
 			return 1
@@ -117,6 +125,7 @@ class Board:
 
 class Piece:
 
+	# Created piece and each of its traits, as well as a reference id
 	def __init__(self, height, color, shape, fill, pid):
 
 		self.height = height
@@ -125,12 +134,20 @@ class Piece:
 		self.fill = fill
 		self.winning = False
 		self.id = pid
+
+		# Tag for text referencing
 		self.tag = self.height[:1] + self.color[:1] + self.shape[:1] + self.fill[:1]
 
 	def properties(self):
 		return [ self.height, self.color, self.shape, self.fill ]
 
 class State:
+
+	# Current state of the game
+	# Whos turn it is
+	# Current utility of the state
+	# The board object as a whole
+	# A list of all of the open locations on the current board
 	def __init__(self, turn, util, board, moves, winning_move=None):
 		self.turn = turn
 		self.util = util
@@ -159,6 +176,46 @@ class State:
 #begin = State('Player', board.currentUtil('Player'), board, board.open)
 
 #begin.printState()
+
+
+###################
+# DECISION MAKING #
+###################
+
+def randomPlacement(state):
+
+	return random.choice(state.board.open)
+
+def randomPiece(state):
+
+	return random.choice(state.board.leftover)
+
+
+def firstPlacement(state):
+
+	return state.board.open[0]
+
+def firstPiece(state):
+
+	return state.board.leftover[0]
+
+
+def alphabeta_cutoff(state, d=4, eval_fn=None):
+
+	player = state.turn
+
+	eval_fn = eval_fn or (lambda state: state.board.currentUtility(player))
+
+	successors = []
+
+	for move in state.moves:
+		s = deepcopy(state)
+		for piece in s.board.leftover:
+			sp =  deepcopy(s)
+			sp.board.make_move(move, piece)
+			successors.append(sp)
+
+	return random.choice(successors).board.lastLoc
 
 #######
 # GUI #
@@ -206,32 +263,30 @@ class gameGUI:
 
 		print("Creating Buttons...")
 
-		self.buttons.append(Button(self.controlB, text="TLSS", command = lambda: self.setSelect(board.pieces[0], 0)))
-		self.buttons.append(Button(self.controlB, text="TLSH", command = lambda: self.setSelect(board.pieces[1], 1)))
-		self.buttons.append(Button(self.controlB, text="TLCS", command = lambda: self.setSelect(board.pieces[2], 2)))
-		self.buttons.append(Button(self.controlB, text="TLCH", command = lambda: self.setSelect(board.pieces[3], 3)))
-		self.buttons.append(Button(self.controlB, text="TDSS", command = lambda: self.setSelect(board.pieces[4], 4)))
-		self.buttons.append(Button(self.controlB, text="TDSH", command = lambda: self.setSelect(board.pieces[5], 5)))
-		self.buttons.append(Button(self.controlB, text="TDCS", command = lambda: self.setSelect(board.pieces[6], 6)))
-		self.buttons.append(Button(self.controlB, text="TDCH", command = lambda: self.setSelect(board.pieces[7], 7)))
-		self.buttons.append(Button(self.controlB, text="SLSS", command = lambda: self.setSelect(board.pieces[8], 8)))
-		self.buttons.append(Button(self.controlB, text="SLSH", command = lambda: self.setSelect(board.pieces[9], 9)))
-		self.buttons.append(Button(self.controlB, text="SLCS", command = lambda: self.setSelect(board.pieces[10], 10)))
-		self.buttons.append(Button(self.controlB, text="SLCH", command = lambda: self.setSelect(board.pieces[11], 11)))
-		self.buttons.append(Button(self.controlB, text="SDSS", command = lambda: self.setSelect(board.pieces[12], 12)))
-		self.buttons.append(Button(self.controlB, text="SDSH", command = lambda: self.setSelect(board.pieces[13], 13)))
-		self.buttons.append(Button(self.controlB, text="SDCS", command = lambda: self.setSelect(board.pieces[14], 14)))
-		self.buttons.append(Button(self.controlB, text="SDCH", command = lambda: self.setSelect(board.pieces[15], 15)))
+		self.buttons.append(Button(self.controlB, text="TLSS", command = lambda: self.setSelect(board.pieces[0])))
+		self.buttons.append(Button(self.controlB, text="TLSH", command = lambda: self.setSelect(board.pieces[1])))
+		self.buttons.append(Button(self.controlB, text="TLCS", command = lambda: self.setSelect(board.pieces[2])))
+		self.buttons.append(Button(self.controlB, text="TLCH", command = lambda: self.setSelect(board.pieces[3])))
+		self.buttons.append(Button(self.controlB, text="TDSS", command = lambda: self.setSelect(board.pieces[4])))
+		self.buttons.append(Button(self.controlB, text="TDSH", command = lambda: self.setSelect(board.pieces[5])))
+		self.buttons.append(Button(self.controlB, text="TDCS", command = lambda: self.setSelect(board.pieces[6])))
+		self.buttons.append(Button(self.controlB, text="TDCH", command = lambda: self.setSelect(board.pieces[7])))
+		self.buttons.append(Button(self.controlB, text="SLSS", command = lambda: self.setSelect(board.pieces[8])))
+		self.buttons.append(Button(self.controlB, text="SLSH", command = lambda: self.setSelect(board.pieces[9])))
+		self.buttons.append(Button(self.controlB, text="SLCS", command = lambda: self.setSelect(board.pieces[10])))
+		self.buttons.append(Button(self.controlB, text="SLCH", command = lambda: self.setSelect(board.pieces[11])))
+		self.buttons.append(Button(self.controlB, text="SDSS", command = lambda: self.setSelect(board.pieces[12])))
+		self.buttons.append(Button(self.controlB, text="SDSH", command = lambda: self.setSelect(board.pieces[13])))
+		self.buttons.append(Button(self.controlB, text="SDCS", command = lambda: self.setSelect(board.pieces[14])))
+		self.buttons.append(Button(self.controlB, text="SDCH", command = lambda: self.setSelect(board.pieces[15])))
 	
 		for button in self.buttons:
 			button.pack(anchor=W, fill=X)
 
-		print("Buttons created!")
-		print("Button list length:", len(self.buttons))
-
+		# Exit Button
 		Button(self.controlM, text="Exit", command=self.exit).pack(fill=X, side="right")
-		self.exitB = False
 
+		# Current piece to play Label
 		self.p = StringVar()
 		self.p.set("Piece")
 		Label(self.controlM, width=13, textvariable=self.p).pack(side="right")
@@ -242,12 +297,13 @@ class gameGUI:
 		# Begin the game
 		self.play()
 
-	def setSelect(self, piece, i):
+	# Player selected piece for computer to play
+	def setSelect(self, piece):
 		self.selected = piece
-		self.buttons[i].config(state="disabled")
 		self.buttonPressed.set(1)
 		print("Current Selection is now:", self.selected.tag)
 
+	# Draws entire contents of current board
 	def draw(self, content=False):
 		for i in range(0,500,int(500/4)):
 			self.canvas.create_line(0,i,500,i)
@@ -258,49 +314,50 @@ class gameGUI:
 			for x, row in zip(range(4), ['1', '2', '3', '4']):
 				for y, col in zip(range(4), ['a', 'b', 'c', 'd']):
 					if (row+col) in self.currentState.board.occupied.keys():
-						self.canvas.create_text((x*(500/4)+(250/4), y*(500/4)+(250/4)), text = self.currentState.board.occupied[row+col].tag)
+						self.canvas.create_text((y*(500/4)+(250/4), x*(500/4)+(250/4)), text = self.currentState.board.occupied[row+col].tag)
 
 
 		self.root.update_idletasks()
 		self.root.update()
 
+	# Destroy method to exit gui
 	def exit(self):
 		self.canvas.delete("all")
-		self.exitB = True
 		self.root.destroy()
 
+	# Click event function, records location of click and links it to a location on the board
 	def click(self, event):
 		if not self.waiting.get(): return
 		self.move = (int(event.x/(500/4))+1, int(event.y/(500/4))+1)
 		if self.move == (1, 1):
 			self.add = '1a'
-		elif self.move == (1, 2):
-			self.add = '1b'
-		elif self.move == (1, 3):
-			self.add = '1c'
-		elif self.move == (1, 4):
-			self.add = '1d'
 		elif self.move == (2, 1):
+			self.add = '1b'
+		elif self.move == (3, 1):
+			self.add = '1c'
+		elif self.move == (4, 1):
+			self.add = '1d'
+		elif self.move == (1, 2):
 			self.add = '2a'
 		elif self.move == (2, 2):
 			self.add = '2b'
-		elif self.move == (2, 3):
-			self.add = '2c'
-		elif self.move == (2, 4):
-			self.add = '2d'
-		elif self.move == (3, 1):
-			self.add = '3a'
 		elif self.move == (3, 2):
+			self.add = '2c'
+		elif self.move == (4, 2):
+			self.add = '2d'
+		elif self.move == (1, 3):
+			self.add = '3a'
+		elif self.move == (2, 3):
 			self.add = '3b'
 		elif self.move == (3, 3):
 			self.add = '3c'
-		elif self.move == (3, 4):
-			self.add = '3d'
-		elif self.move == (4, 1):
-			self.add = '4a'
-		elif self.move == (4, 2):
-			self.add = '4b'
 		elif self.move == (4, 3):
+			self.add = '3d'
+		elif self.move == (1, 4):
+			self.add = '4a'
+		elif self.move == (2, 4):
+			self.add = '4b'
+		elif self.move == (3, 4):
 			self.add = '4c'
 		elif self.move == (4, 4):
 			self.add = '4d'
@@ -308,60 +365,65 @@ class gameGUI:
 		print(self.add)
 		self.waiting.set(0)
 
+	# Turn based gameplay
 	def play(self):
 
 		self.pieceToPlay = None
 
+		# Begin turns
 		while True:
 
-			# Choose piece for computer to play
+			#### PLAYER CHOOSES A PIECE ####
 			self.control.wait_variable(self.buttonPressed)
+			self.buttonPressed.set(0)
 			self.pieceToPlay = self.selected
+			self.buttons[self.pieceToPlay.id].config(state="disabled")
 			self.p.set(self.pieceToPlay.tag)
 			self.draw(True)
 			print("Giving to computer:", self.pieceToPlay.tag)
 
-			self.buttonPressed.set(0)
 
+			#### COMPUTER MAKES A MOVE ####
 			self.currentState.turn = "Computer"
-			self.currentState.board.make_move(self.pieceToPlay, random.choice(self.currentState.board.open))
-			#self.currentState.board.printBoard()
+			####################
+			#place = firstPlacement(self.currentState)
+			#place = randomPlacement(self.currentState)
+			place = alphabeta_cutoff(self.currentState)
+			####################
+			self.currentState.board.make_move(self.pieceToPlay, place)
 			self.draw(True)
 
+			# Win Check
 			if(self.currentState.board.quarto()):
-				print("Winner", self.currentState.turn)
+				print("Winner:", self.currentState.turn)
 				break
 
 
-			self.pieceToPlay = random.choice(self.currentState.board.leftover)
+			#### COMPUTER CHOOSES A PIECE ####
+			####################
+			self.pieceToPlay = firstPiece(self.currentState)
+			#self.pieceToPlay = randomPiece(self.currentState)
+			####################
 			self.buttons[self.pieceToPlay.id].config(state="disabled")
 			self.p.set(self.pieceToPlay.tag)
 			self.draw(True)
 			print("Gave to player:", self.pieceToPlay.tag)
 
-			self.currentState.turn = "Player"
 
+			#### PLAYER MAKES A MOVE ####
+			self.currentState.turn = "Player"
 			self.add = None
 			while self.add not in self.currentState.board.occupied.keys():
-				print("stuck in loop")
-
 				self.waiting.set(1)
-
 				self.canvas.wait_variable(self.waiting)
-
 				self.currentState.board.make_move(self.pieceToPlay, self.add)
 
 			self.add = None
-
-			#self.currentState.board.printBoard()
-
 			self.draw(True)
 
+			# Win Check
 			if(self.currentState.board.quarto()):
 				print("Winner:", self.currentState.turn)
-				break
-
-			if self.exitB:
 				break
 
 
