@@ -85,9 +85,6 @@ class Board:
 
 		self.leftover = self.pieces.copy()
 
-		self.lastPiece = None
-		self.lastLoc = None
-
 	# Performs a single move on the board and updates availability accordingly
 	def make_move(self, piece, loc):
 		if loc in self.open and piece not in self.occupied.values():
@@ -95,7 +92,6 @@ class Board:
 			self.open.remove(loc)
 			self.leftover.remove(piece)
 			print("Successful move")
-			self.last = piece
 		else:
 			print("Illegal move attempted")
 
@@ -118,6 +114,17 @@ class Board:
 			return -1
 		else:
 			return 0
+
+	def copy(self):
+
+		bc = Board(self.adv)
+
+		bc.win = self.win
+		bc.occupied = self.occupied.copy()
+		bc.open = self.open.copy()
+		bc.leftover = self.leftover.copy()
+
+		return bc
 
 	def printBoard(self):
 		print(self.win)
@@ -152,8 +159,49 @@ class State:
 		self.turn = turn
 		self.util = util
 		self.board = board
+		self.piece = None
 		self.moves = moves
 		self.winning_move = winning_move
+		self.lastPiece = None
+		self.lastLoc = None
+
+	def terminal(self):
+		if self.board.quarto() or len(self.board.open) == 0:
+			return True
+		else:
+			return False
+
+	def copy(self):
+		
+		s = State(self.turn, self.util, self.board.copy(), self.moves.copy())
+		return s
+
+	def move(self, piece, loc):
+		self.board.make_move(piece, loc)
+		self.lastPiece = piece
+		self.lastLoc = loc
+
+	def setPiece(self, piece):
+		self.piece = piece
+
+	def successors(self, manual):
+
+		successors = []
+
+		for move in self.board.open:
+			s = self.copy()
+
+			if manual:
+				s.move(self.piece, move)
+				successors.append(s)
+
+			else:
+				for p in s.board.leftover:
+					sp =  s.copy()
+					sp.move(p, move)
+					successors.append(sp)
+
+		return successors
 
 	def printState(self):
 		print("Current turn is:", self.turn)
@@ -182,6 +230,8 @@ class State:
 # DECISION MAKING #
 ###################
 
+infi = 1.0e400
+
 def randomPlacement(state):
 
 	return random.choice(state.board.open)
@@ -200,22 +250,69 @@ def firstPiece(state):
 	return state.board.leftover[0]
 
 
-def alphabeta_cutoff(state, d=4, eval_fn=None):
+def alphabeta_cutoff(state, pieceOrLoc, man=False, d=1, eval_fn=None):
 
 	player = state.turn
 
-	eval_fn = eval_fn or (lambda state: state.board.currentUtility(player))
+	eval_fn = eval_fn or (lambda state: state.board.currentUtil(player))
+ 
 
-	successors = []
+	def max_value(state, alpha, beta, depth, manual):
+		if state.terminal():
+			return state.board.currentUtil(state.turn)
 
-	for move in state.moves:
-		s = deepcopy(state)
-		for piece in s.board.leftover:
-			sp =  deepcopy(s)
-			sp.board.make_move(move, piece)
-			successors.append(sp)
+		if depth > d:
+			return eval_fn(state)
 
-	return random.choice(successors).board.lastLoc
+		depth += 1
+		v = -infi
+
+
+		for s in state.successors(manual):
+			v = max(v, min_value(s, alpha, beta, depth, False))
+			if v >= beta:
+				return v
+			alpha = max(alpha, v)
+
+		return v
+
+	def min_value(state, alpha, beta, depth, manual):
+		if state.terminal():
+			return state.board.currentUtil(state.turn)
+		
+		if depth > d:
+			return eval_fn(state)
+
+		depth += 1
+		v = infi
+
+		for s in state.successors(manual):
+			v = min(v, max_value(s, alpha, beta, depth, False))
+			if v <= alpha:
+				return v
+			beta = min(beta, v)
+
+		return v
+
+	if pieceOrLoc == "Loc":
+		return arg_max(state.successors(man), lambda x: min_value(state, -infi, infi, 0, man)).lastLoc
+	else:
+		return arg_max(state.successors(man), lambda x: min_value(state, -infi, infi, 0, man)).lastPiece
+
+def arg_max(seq, fn):
+	return arg_min(seq, lambda x: -fn(x))
+
+def arg_min(seq, fn):
+
+	best = seq[0]
+	bestScore = fn(best)
+
+	for x in seq:
+		xScore = fn(x)
+		if xScore < bestScore:
+			best, bestScore = x, xScore
+
+	return best
 
 #######
 # GUI #
@@ -370,47 +467,32 @@ class gameGUI:
 
 		self.pieceToPlay = None
 
-		# Begin turns
-		while True:
-
-			#### PLAYER CHOOSES A PIECE ####
+		def playerChoose():
 			self.control.wait_variable(self.buttonPressed)
 			self.buttonPressed.set(0)
 			self.pieceToPlay = self.selected
+			self.currentState.setPiece(self.pieceToPlay)
 			self.buttons[self.pieceToPlay.id].config(state="disabled")
 			self.p.set(self.pieceToPlay.tag)
 			self.draw(True)
-			print("Giving to computer:", self.pieceToPlay.tag)
+			print("Giving to computer", self.pieceToPlay)
 
-
-			#### COMPUTER MAKES A MOVE ####
-			self.currentState.turn = "Computer"
-			####################
-			#place = firstPlacement(self.currentState)
-			#place = randomPlacement(self.currentState)
-			place = alphabeta_cutoff(self.currentState)
-			####################
-			self.currentState.board.make_move(self.pieceToPlay, place)
-			self.draw(True)
-
-			# Win Check
-			if(self.currentState.board.quarto()):
-				print("Winner:", self.currentState.turn)
-				break
-
-
-			#### COMPUTER CHOOSES A PIECE ####
-			####################
-			self.pieceToPlay = firstPiece(self.currentState)
-			#self.pieceToPlay = randomPiece(self.currentState)
-			####################
+		def computerChoose(rand):
+			if rand:
+				self.pieceToPlay = randomPiece(self.currentState)
+			else:
+				####################
+				#self.pieceToPlay = firstPiece(self.currentState)
+				#self.pieceToPlay = randomPiece(self.currentState)
+				self.pieceToPlay = alphabeta_cutoff(self.currentState, "Piece")
+				####################
+			self.currentState.setPiece(self.pieceToPlay)
 			self.buttons[self.pieceToPlay.id].config(state="disabled")
 			self.p.set(self.pieceToPlay.tag)
 			self.draw(True)
 			print("Gave to player:", self.pieceToPlay.tag)
 
-
-			#### PLAYER MAKES A MOVE ####
+		def playerMove():
 			self.currentState.turn = "Player"
 			self.add = None
 			while self.add not in self.currentState.board.occupied.keys():
@@ -420,6 +502,91 @@ class gameGUI:
 
 			self.add = None
 			self.draw(True)
+
+		def computerMove(rand):
+			self.currentState.turn = "Computer"
+			if rand:
+				place = randomPlacement(self.currentState)
+			else:
+				####################
+				#place = firstPlacement(self.currentState)
+				#place = randomPlacement(self.currentState)
+				place = alphabeta_cutoff(self.currentState, "Loc", True)
+				####################
+			self.currentState.move(self.pieceToPlay, place)
+			self.draw(True)
+
+		for i in range(2):
+			playerChoose()
+
+			computerMove(True)
+
+			computerChoose(True)
+
+			playerMove()
+
+		# Begin turns
+		while True:
+
+			#### PLAYER CHOOSES A PIECE ####
+			playerChoose()
+			'''
+			self.control.wait_variable(self.buttonPressed)
+			self.buttonPressed.set(0)
+			self.pieceToPlay = self.selected
+			self.currentState.setPiece(self.pieceToPlay)
+			self.buttons[self.pieceToPlay.id].config(state="disabled")
+			self.p.set(self.pieceToPlay.tag)
+			self.draw(True)
+			print("Giving to computer:", self.pieceToPlay.tag)
+			'''
+
+			#### COMPUTER MAKES A MOVE ####
+			computerMove(False)
+			'''
+			self.currentState.turn = "Computer"
+			####################
+			#place = firstPlacement(self.currentState)
+			#place = randomPlacement(self.currentState)
+			place = alphabeta_cutoff(self.currentState, "Loc", True)
+			####################
+			self.currentState.move(self.pieceToPlay, place)
+			self.draw(True)
+			'''
+
+			# Win Check
+			if(self.currentState.board.quarto()):
+				print("Winner:", self.currentState.turn)
+				break
+
+			#### COMPUTER CHOOSES A PIECE ####
+			computerChoose(False)
+			'''
+			####################
+			#self.pieceToPlay = firstPiece(self.currentState)
+			#self.pieceToPlay = randomPiece(self.currentState)
+			self.pieceToPlay = alphabeta_cutoff(self.currentState, "Piece")
+			####################
+			self.currentState.setPiece(self.pieceToPlay)
+			self.buttons[self.pieceToPlay.id].config(state="disabled")
+			self.p.set(self.pieceToPlay.tag)
+			self.draw(True)
+			print("Gave to player:", self.pieceToPlay.tag)
+			'''
+
+			#### PLAYER MAKES A MOVE ####
+			playerMove()
+			'''
+			self.currentState.turn = "Player"
+			self.add = None
+			while self.add not in self.currentState.board.occupied.keys():
+				self.waiting.set(1)
+				self.canvas.wait_variable(self.waiting)
+				self.currentState.board.make_move(self.pieceToPlay, self.add)
+
+			self.add = None
+			self.draw(True)
+			'''
 
 			# Win Check
 			if(self.currentState.board.quarto()):
