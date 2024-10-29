@@ -91,29 +91,54 @@ class Board:
 			self.occupied[loc] = piece
 			self.open.remove(loc)
 			self.leftover.remove(piece)
-			print("Successful move")
+			#print("Successful move")
 		else:
 			print("Illegal move attempted")
 
 	# True if a zone on the current board contains a quarto, False if not,  updates wind status
 	def quarto(self):
 
-		print("Checking Zones")
+		#print("Checking Zones")
 		for zone in self.zones:
 			if set(zone).issubset(set(self.occupied.keys())):
 				if bool(set(self.occupied[zone[0]].properties()) & set(self.occupied[zone[1]].properties()) & set(self.occupied[zone[2]].properties()) & set(self.occupied[zone[3]].properties())):
 					self.win = True
-		print("Zones Checked")
+		#print("Zones Checked")
 		return self.win
+	
+	def zoneUtil(self,zone):
+		height = {"Tall": 0, "Short": 0}
+		color = {"Light": 0, "Short": 0}
+		shape = {"Sqare": 0, "Circle": 0}
+		fill = {"Solid": 0, "Hollow": 0}
+
+		for i in range(4):
+			piece = self.occupied[zone[i]]
+			if piece is not None:
+				height[piece.height] += 1
+				color[piece.color] += 1
+				shape[piece.shape] += 1
+				fill[piece.fill] += 1
+
+		return max(max(height.values()),max(color.values()),max(shape.values()),max(fill.values()))
 
 	# Provides utility of current board
 	def currentUtil(self, turn):
-		if self.quarto and turn == 'Player':
-			return 1
-		elif self.quarto and turn == 'Computer':
-			return -1
+		s = 0
+		if self.quarto:
+			s = 100
 		else:
-			return 0
+			for zone in self.zones:
+				score = self.zoneUtil(zone)
+				if score == 3:
+					s += 10
+				elif score == 2:
+					s += 5
+
+		if turn == "Player":
+			return s
+		else:
+			return s
 
 	def copy(self):
 
@@ -475,7 +500,7 @@ class gameGUI:
 			self.buttons[self.pieceToPlay.id].config(state="disabled")
 			self.p.set(self.pieceToPlay.tag)
 			self.draw(True)
-			print("Giving to computer", self.pieceToPlay)
+			print("Giving to computer", self.pieceToPlay.tag)
 
 		def computerChoose(rand):
 			if rand:
@@ -484,7 +509,7 @@ class gameGUI:
 				####################
 				#self.pieceToPlay = firstPiece(self.currentState)
 				#self.pieceToPlay = randomPiece(self.currentState)
-				self.pieceToPlay = alphabeta_cutoff(self.currentState, "Piece")
+				self.pieceToPlay = alphabeta_cutoff(self.currentState, "Piece", d=5)
 				####################
 			self.currentState.setPiece(self.pieceToPlay)
 			self.buttons[self.pieceToPlay.id].config(state="disabled")
@@ -511,7 +536,7 @@ class gameGUI:
 				####################
 				#place = firstPlacement(self.currentState)
 				#place = randomPlacement(self.currentState)
-				place = alphabeta_cutoff(self.currentState, "Loc", True)
+				place = alphabeta_cutoff(self.currentState, "Loc", True, 5)
 				####################
 			self.currentState.move(self.pieceToPlay, place)
 			self.draw(True)
@@ -529,6 +554,7 @@ class gameGUI:
 		while True:
 
 			#### PLAYER CHOOSES A PIECE ####
+			print("Player Choosing...")
 			playerChoose()
 			'''
 			self.control.wait_variable(self.buttonPressed)
@@ -542,6 +568,7 @@ class gameGUI:
 			'''
 
 			#### COMPUTER MAKES A MOVE ####
+			print("Computer Moving...")
 			computerMove(False)
 			'''
 			self.currentState.turn = "Computer"
@@ -555,11 +582,13 @@ class gameGUI:
 			'''
 
 			# Win Check
+			print("Checking Win State...")
 			if(self.currentState.board.quarto()):
 				print("Winner:", self.currentState.turn)
 				break
 
 			#### COMPUTER CHOOSES A PIECE ####
+			print("Computer Choosing...")
 			computerChoose(False)
 			'''
 			####################
@@ -575,6 +604,7 @@ class gameGUI:
 			'''
 
 			#### PLAYER MAKES A MOVE ####
+			print("Player Moving...")
 			playerMove()
 			'''
 			self.currentState.turn = "Player"
@@ -589,6 +619,7 @@ class gameGUI:
 			'''
 
 			# Win Check
+			print("Checking Win State...")
 			if(self.currentState.board.quarto()):
 				print("Winner:", self.currentState.turn)
 				break
