@@ -1,12 +1,14 @@
 from tkinter import *
+from PIL import Image, ImageTk
 from QuartoClasses import *
+from Game import Game
 from qutil import *
 import sys
 import os
 
 class gameGUI:
 
-	def __init__(self, title="Quarto",geometry="800x500"):
+	def __init__(self, title="Quarto",geometry="1250x500"):
 
 		self.firstPlayer = None
 		self.piece = None
@@ -17,11 +19,14 @@ class gameGUI:
 		self.root.geometry(geometry)
 		self.root.protocol("WM_DELETE_WINDOW", exit)
 		def handle(event):
+			self.root.update()
 			self.root.quit()
 			self.root.destroy()
 			sys.exit()
 			os._exit(0)
 		self.root.bind_all('<Control-c>',handle)
+		self.root.pack_propagate(True)
+		self.root.grid_propagate(True)
 
 		# Canvas
 		self.canvas = Canvas(self.root, width=500, height=500)
@@ -48,28 +53,80 @@ class gameGUI:
 		self.controlM.pack(side= RIGHT, fill=X, padx=5, pady=5)
 
 		# Piece Buttons
+		self.pngs = []
+		img = Image.open("Resources/TLSS.png").resize((100,100))
+		self.TLSS = ImageTk.PhotoImage(img)
+		self.pngs.append(self.TLSS)
+		img = Image.open("Resources/TLSH.png").resize((100,100))
+		self.TLSH = ImageTk.PhotoImage(img)
+		self.pngs.append(self.TLSH)
+		img = Image.open("Resources/TLCS.png").resize((100,100))
+		self.TLCS = ImageTk.PhotoImage(img)
+		self.pngs.append(self.TLCS)
+		img = Image.open("Resources/TLCH.png").resize((100,100))
+		self.TLCH = ImageTk.PhotoImage(img)
+		self.pngs.append(self.TLCH)
+		img = Image.open("Resources/TDSS.png").resize((100,100))
+		self.TDSS = ImageTk.PhotoImage(img)
+		self.pngs.append(self.TDSS)
+		img = Image.open("Resources/TDSH.png").resize((100,100))
+		self.TDSH = ImageTk.PhotoImage(img)
+		self.pngs.append(self.TDSH)
+		img = Image.open("Resources/TDCS.png").resize((100,100))
+		self.TDCS = ImageTk.PhotoImage(img)
+		self.pngs.append(self.TDCS)
+		img = Image.open("Resources/TDCH.png").resize((100,100))
+		self.TDCH = ImageTk.PhotoImage(img)
+		self.pngs.append(self.TDCH)
+		img = Image.open("Resources/SLSS.png").resize((100,100))
+		self.SLSS = ImageTk.PhotoImage(img)
+		self.pngs.append(self.SLSS)
+		img = Image.open("Resources/SLSH.png").resize((100,100))
+		self.SLSH = ImageTk.PhotoImage(img)
+		self.pngs.append(self.SLSH)
+		img = Image.open("Resources/SLCS.png").resize((100,100))
+		self.SLCS = ImageTk.PhotoImage(img)
+		self.pngs.append(self.SLCS)
+		img = Image.open("Resources/SLCH.png").resize((100,100))
+		self.SLCH = ImageTk.PhotoImage(img)
+		self.pngs.append(self.SLCH)
+		img = Image.open("Resources/SDSS.png").resize((100,100))
+		self.SDSS = ImageTk.PhotoImage(img)
+		self.pngs.append(self.SDSS)
+		img = Image.open("Resources/SDSH.png").resize((100,100))
+		self.SDSH = ImageTk.PhotoImage(img)
+		self.pngs.append(self.SDSH)
+		img = Image.open("Resources/SDCS.png").resize((100,100))
+		self.SDCS = ImageTk.PhotoImage(img)
+		self.pngs.append(self.SDCS)
+		img = Image.open("Resources/SDCH.png").resize((100,100))
+		self.SDCH = ImageTk.PhotoImage(img)
+		self.pngs.append(self.SDCH)
 
-		self.buttons = []
+		self.buttons: list[Button] = []
 
-		self.buttons.append(Button(self.controlB, text="TLSS", command = lambda: self.setSelect(0)))
-		self.buttons.append(Button(self.controlB, text="TLSH", command = lambda: self.setSelect(1)))
-		self.buttons.append(Button(self.controlB, text="TLCS", command = lambda: self.setSelect(2)))
-		self.buttons.append(Button(self.controlB, text="TLCH", command = lambda: self.setSelect(3)))
-		self.buttons.append(Button(self.controlB, text="TDSS", command = lambda: self.setSelect(4)))
-		self.buttons.append(Button(self.controlB, text="TDSH", command = lambda: self.setSelect(5)))
-		self.buttons.append(Button(self.controlB, text="TDCS", command = lambda: self.setSelect(6)))
-		self.buttons.append(Button(self.controlB, text="TDCH", command = lambda: self.setSelect(7)))
-		self.buttons.append(Button(self.controlB, text="SLSS", command = lambda: self.setSelect(8)))
-		self.buttons.append(Button(self.controlB, text="SLSH", command = lambda: self.setSelect(9)))
-		self.buttons.append(Button(self.controlB, text="SLCS", command = lambda: self.setSelect(10)))
-		self.buttons.append(Button(self.controlB, text="SLCH", command = lambda: self.setSelect(11)))
-		self.buttons.append(Button(self.controlB, text="SDSS", command = lambda: self.setSelect(12)))
-		self.buttons.append(Button(self.controlB, text="SDSH", command = lambda: self.setSelect(13)))
-		self.buttons.append(Button(self.controlB, text="SDCS", command = lambda: self.setSelect(14)))
-		self.buttons.append(Button(self.controlB, text="SDCH", command = lambda: self.setSelect(15)))
+		self.buttons.append(Button(self.controlB, image=self.TLSS, command = lambda: self.setSelect(0)))
+		self.buttons.append(Button(self.controlB, image=self.TLSH, command = lambda: self.setSelect(1)))
+		self.buttons.append(Button(self.controlB, image=self.TLCS, command = lambda: self.setSelect(2)))
+		self.buttons.append(Button(self.controlB, image=self.TLCH, command = lambda: self.setSelect(3)))
+		self.buttons.append(Button(self.controlB, image=self.TDSS, command = lambda: self.setSelect(4)))
+		self.buttons.append(Button(self.controlB, image=self.TDSH, command = lambda: self.setSelect(5)))
+		self.buttons.append(Button(self.controlB, image=self.TDCS, command = lambda: self.setSelect(6)))
+		self.buttons.append(Button(self.controlB, image=self.TDCH, command = lambda: self.setSelect(7)))
+		self.buttons.append(Button(self.controlB, image=self.SLSS, command = lambda: self.setSelect(8)))
+		self.buttons.append(Button(self.controlB, image=self.SLSH, command = lambda: self.setSelect(9)))
+		self.buttons.append(Button(self.controlB, image=self.SLCS, command = lambda: self.setSelect(10)))
+		self.buttons.append(Button(self.controlB, image=self.SLCH, command = lambda: self.setSelect(11)))
+		self.buttons.append(Button(self.controlB, image=self.SDSS, command = lambda: self.setSelect(12)))
+		self.buttons.append(Button(self.controlB, image=self.SDSH, command = lambda: self.setSelect(13)))
+		self.buttons.append(Button(self.controlB, image=self.SDCS, command = lambda: self.setSelect(14)))
+		self.buttons.append(Button(self.controlB, image=self.SDCH, command = lambda: self.setSelect(15)))
 
-		for button in self.buttons:
-			button.pack(anchor=W, fill=X)
+		for i, button in enumerate(self.buttons):
+			x = i // 4
+			y = i % 4
+			button.grid(row=x,column=y,padx=5,pady=5)
+			#button.pack(anchor=W, fill=X)
 
 		# Exit Button
 		Button(self.controlM, text="Exit", command=self.exit).pack(fill=X, side="right")
@@ -79,7 +136,8 @@ class gameGUI:
 		# Current Piece Label
 		self.p = StringVar()
 		self.p.set("Piece")
-		Label(self.controlM, width=13, textvariable=self.p).pack(side="right")
+		self.selectedPiece = Label(self.controlM,image=None)
+		self.selectedPiece.pack(side="right")
 
 		# Draw Board
 		self.draw(None)
@@ -88,9 +146,15 @@ class gameGUI:
 		self.play()
 
 	def setSelect(self, piece):
-		self.piece = piece
-		self.buttonPressed.set(1)
-		print("Current Selection:", self.piece)
+		if piece is None:
+			self.selectedPiece.config(image='')
+			self.root.update()
+		else:
+			self.piece = piece
+			self.buttonPressed.set(1)
+			self.selectedPiece.config(image=self.pngs[self.piece])
+			self.root.update()
+			self.waiting.set(0)
 
 	def setPlayer(self, player):
 		if player == "Player":
@@ -109,14 +173,16 @@ class gameGUI:
 		if content:
 			for x in range(4):
 				for y in range(4):
-					if game.getPiece(x,y) is not None:
-						self.canvas.create_text((y*(500/4)+(250/4), x*(500/4)+(250/4)), text = game.getPiece(x,y))
-
+					p = game.getPiece((x,y))
+					if p is not None:
+						#self.canvas.create_text((y*(500/4)+(250/4), x*(500/4)+(250/4)), text = game.getPiece(x,y))
+						self.canvas.create_image((x*(500/4)+(250/4), y*(500/4)+(250/4)), image=self.pngs[p])
 
 		self.root.update_idletasks()
 		self.root.update()
 
 	def exit(self):
+		self.root.update()
 		self.canvas.delete("all")
 		self.root.quit()
 		self.root.destroy()
@@ -125,69 +191,102 @@ class gameGUI:
 
 	def click(self,event):
 		if not self.waiting.get(): return
-		self.move = (int(event.x/(500/4))+1, int(event.y/(500/4))+1)
-
-		print(self.move)
+		self.move = (int(event.x/(500/4)), int(event.y/(500/4)))
+		x,y = self.move
 		self.waiting.set(0)
 
 	def play(self):
 
 		def end():
-			if game.won():
-				print("Winner:", player)
-				return True
 			if game.finished():
-				print("No Winners")
+				if game.won():
+					print("Winner:", player)
+				else:
+					print("No Winners")
 				return True
 			return False
 		
-		def playerTurn():
+		def playerTurnPlace():
 			self.move = None
 			while game.badMove(self.move):
-				print("Bad move?",game.badMove(self.move))
-				print("Waiting...")
 				self.waiting.set(1)
 				self.canvas.wait_variable(self.waiting)
-			game.place(self.move)
+			game.playerPlace(self.move)
+			self.setSelect(None)
 			self.draw(game,True)
+
+		def playerTurnSelect():
 			self.piece = None
 			while game.badPiece(self.piece):
 				self.waiting.set(1)
 				self.canvas.wait_variable(self.waiting)
 			self.p.set(dpiece(self.piece))
-			game.choose(self.piece)
+			game.playerPick(self.piece)
+			self.buttons[self.piece]["state"] = "disabled"
 			self.draw(game,True)
 		
 		def computerTurn():
-			return
+			game.computerTurn()
+			self.piece = game.state.nextPiece
+			self.setSelect(self.piece)
+			self.buttons[self.piece]["state"] = "disabled"
+			self.draw(game,True)
 
 		while self.firstPlayer is None:
 			self.control.wait_variable(self.buttonPressed)
 			self.buttonPressed.set(0)
 
-		game = Game(True,self.firstPlayer)
+		game = Game()
 		player = self.firstPlayer
 
 		if self.firstPlayer == "Computer":
-			self.p.set(game.randomPiece())
+			print("Computer Selecting a Piece...")
+			self.piece = game.setFirstPiece(rand=True)
+			self.buttons[self.piece]["state"] = "disabled"
 			self.draw(game)
+			game.setPlayer("Player")
+			player = "Player"
+			playerTurnPlace()
+			playerTurnSelect()
+		else:
+			self.piece = None
+			print("Please Select a Piece")
+			while self.piece is None:
+				self.control.wait_variable(self.buttonPressed)
+				self.buttonPressed.set(0)
+			game.setFirstPiece(self.piece)
+			self.buttons[self.piece]["state"] = "disabled"
+			game.setPlayer("Computer")
+			player = "Computer"
 
-		if self.firstPlayer == "Computer":
-			playerTurn()
-
-		while True:
+		while self.root.winfo_exists():
 			
+			print("Computer's Turn...")
+			player = "Computer"
 			computerTurn()
-
+			self.root.update()
 			if end():
 				break
 
-			playerTurn()
-
+			print("Player Placing...")
+			player = "Player"
+			playerTurnPlace()
+			self.root.update()
 			if end():
 				break
 
-		self.draw(game)
+			print("Player Selecting")
+			playerTurnSelect()
+			self.root.update()
+			if end():
+				break
+
+			try:
+				self.root.winfo_exists()
+			except:
+				break
+
+		#self.draw(game)
 
 if __name__ == "__main__":
 	app = gameGUI()
