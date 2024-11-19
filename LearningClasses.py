@@ -127,7 +127,7 @@ class DQNAgent:
 		q_vals = self.q_net(b,p)
 
 		# Mask invalid actions
-		mask = torch.full((272,), float('-inf')).to('cuda')
+		mask = torch.full((272,), float('-inf')).to(self.device)
 		for action in range(272):
 			loc, piece = decodeAction(action)
 			if valid(loc,state.board,piece,state.pieces):
