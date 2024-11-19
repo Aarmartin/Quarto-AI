@@ -195,7 +195,7 @@ class DQNAgent:
 		self.t_net.load_state_dict(self.q_net.state_dict())
 
 class Train:
-	def __init__(self, env: QuartoState, agent1: DQNAgent, agent2: DQNAgent, episodes=10000, targetUpdate=10, size=128, writer: SummaryWriter = SummaryWriter()):
+	def __init__(self, env: QuartoState, agent1: DQNAgent, agent2: DQNAgent, episodes=10000, targetUpdate=10, size=128, writer: SummaryWriter = None):
 		self.env = env
 		self.agent1 = agent1
 		self.agent2 = agent2
@@ -260,7 +260,7 @@ class Train:
 			rl1 = self.agent1.train(self.size)
 			rl2 = self.agent2.train(self.size)
 
-			if rl1 is not None and rl2 is not None:
+			if rl1 is not None and rl2 is not None and self.writer is not None:
 				self.writer.add_scalar("loss/episode Agent 1",rl1,episode)
 				self.writer.add_scalar("loss/episode Agent 2",rl2,episode)
 
