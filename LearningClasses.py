@@ -270,6 +270,8 @@ class Train:
 				self.agent1.updateEpsilon()
 				self.agent2.updateTargetNet()
 				self.agent2.updateEpsilon()
+				if self.writer is not None:
+					self.writer.add_scalar(f"epsilon/{self.targetUpdate}",self.agent1.epsilon, episode)
 
 			if episode % 1000 == 0:
 				print(f"Episode: {episode}")
