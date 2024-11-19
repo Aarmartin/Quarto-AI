@@ -8,10 +8,11 @@ import os
 
 class gameGUI:
 
-	def __init__(self, title="Quarto",geometry="1250x500"):
+	def __init__(self, model="models/comp.model", title="Quarto",geometry="1250x500"):
 
 		self.firstPlayer = None
 		self.piece = None
+		self.model = model
 
 		# Env
 		self.root = Tk()
@@ -38,6 +39,7 @@ class gameGUI:
 		self.waiting.set(1)
 		self.buttonPressed = BooleanVar()
 		self.buttonPressed.set(0)
+		self.computerSelected = False
 		self.move = None
 
 		# Initial Frame
@@ -126,7 +128,6 @@ class gameGUI:
 			x = i // 4
 			y = i % 4
 			button.grid(row=x,column=y,padx=5,pady=5)
-			#button.pack(anchor=W, fill=X)
 
 		# Exit Button
 		Button(self.controlM, text="Exit", command=self.exit).pack(fill=X, side="right")
@@ -134,8 +135,8 @@ class gameGUI:
 		Button(self.controlM, text="Computer", command= lambda: self.setPlayer("Computer")).pack(fill=X, side="right")
 
 		# Current Piece Label
-		self.p = StringVar()
-		self.p.set("Piece")
+		# self.p = StringVar()
+		# self.p.set("Piece")
 		self.selectedPiece = Label(self.controlM,image=None)
 		self.selectedPiece.pack(side="right")
 
@@ -145,6 +146,7 @@ class gameGUI:
 		# Begin Game
 		self.play()
 
+	# Set selected piece for play
 	def setSelect(self, piece):
 		if piece is None:
 			self.selectedPiece.config(image='')
@@ -152,10 +154,12 @@ class gameGUI:
 		else:
 			self.piece = piece
 			self.buttonPressed.set(1)
-			self.selectedPiece.config(image=self.pngs[self.piece])
+			if not self.computerSelected:
+				self.selectedPiece.config(image=self.pngs[self.piece])
 			self.root.update()
 			self.waiting.set(0)
 
+	# Set current player
 	def setPlayer(self, player):
 		if player == "Player":
 			self.firstPlayer = "Player"
@@ -164,6 +168,7 @@ class gameGUI:
 		self.buttonPressed.set(1)
 		print("Player Selected:", self.firstPlayer)
 
+	# Draw board
 	def draw(self, game: Game, content=False):
 		for i in range(0,500,int(500/4)):
 			self.canvas.create_line(0,i,500,i)
@@ -181,6 +186,7 @@ class gameGUI:
 		self.root.update_idletasks()
 		self.root.update()
 
+	# Exit function
 	def exit(self):
 		self.root.update()
 		self.canvas.delete("all")
@@ -189,6 +195,7 @@ class gameGUI:
 		sys.exit()
 		os._exit(0)
 
+	# Map grid selection to location for action
 	def click(self,event):
 		if not self.waiting.get(): return
 		self.move = (int(event.x/(500/4)), int(event.y/(500/4)))
@@ -197,6 +204,7 @@ class gameGUI:
 
 	def play(self):
 
+		# End Status
 		def end():
 			if game.finished():
 				if game.won():
@@ -206,45 +214,52 @@ class gameGUI:
 				return True
 			return False
 		
+		# Player's Turn: Selecting location to place piece
 		def playerTurnPlace():
 			self.move = None
 			while game.badMove(self.move):
 				self.waiting.set(1)
 				self.canvas.wait_variable(self.waiting)
 			game.playerPlace(self.move)
+			self.computerSelected = False
 			self.setSelect(None)
 			self.draw(game,True)
 
+		# Player's Turn: Choosing a piece to give opponent
 		def playerTurnSelect():
 			self.piece = None
 			while game.badPiece(self.piece):
 				self.waiting.set(1)
 				self.canvas.wait_variable(self.waiting)
-			self.p.set(dpiece(self.piece))
+			# self.p.set(dpiece(self.piece))
 			game.playerPick(self.piece)
 			self.buttons[self.piece]["state"] = "disabled"
 			self.draw(game,True)
 		
+		# Computer's Turn
 		def computerTurn():
 			game.computerTurn()
 			self.piece = game.state.nextPiece
 			self.setSelect(self.piece)
 			self.buttons[self.piece]["state"] = "disabled"
+			self.computerSelected = True
 			self.draw(game,True)
 
+		# Wait for first player selection
 		while self.firstPlayer is None:
 			self.control.wait_variable(self.buttonPressed)
 			self.buttonPressed.set(0)
 
-		game = Game()
+		game = Game(self.model)
 		player = self.firstPlayer
 
+		# First player chooses piece, and play begins
 		if self.firstPlayer == "Computer":
 			print("Computer Selecting a Piece...")
 			self.piece = game.setFirstPiece(rand=True)
+			self.setSelect(self.piece)
 			self.buttons[self.piece]["state"] = "disabled"
 			self.draw(game)
-			game.setPlayer("Player")
 			player = "Player"
 			playerTurnPlace()
 			playerTurnSelect()
@@ -256,9 +271,9 @@ class gameGUI:
 				self.buttonPressed.set(0)
 			game.setFirstPiece(self.piece)
 			self.buttons[self.piece]["state"] = "disabled"
-			game.setPlayer("Computer")
 			player = "Computer"
 
+		# Gameplay loop
 		while self.root.winfo_exists():
 			
 			print("Computer's Turn...")
@@ -286,8 +301,10 @@ class gameGUI:
 			except:
 				break
 
-		#self.draw(game)
-
 if __name__ == "__main__":
-	app = gameGUI()
+	if len(sys.argv) > 1:
+		model = str(sys.argv[1])
+	else:
+		model = "comp.model"
+	app = gameGUI(model)
 	app.root.mainloop()

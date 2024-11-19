@@ -5,132 +5,23 @@ import torch
 ###########
 # Classes #
 ###########
-'''
-class Board:
-
-	# Create board
-	# Game mode Normal or Advanced
-	# Initial win state is false
-	# List of all of the possible board spaces
-	# Initial open spaces is all spaces
-	# Initial occupied spaces is none
-	# Establish win zones (Rows, Columns, and Diags if Normal, include 2x2 squares if advaced)
-	# Create 16 pieces associated with the board
-	def __init__(self, adv):
-
-		# Board specification if it is advanced or not
-		self.adv = adv
-
-		# Establish all board spaces
-		self.spaces = [[None for _ in range(4)] for _ in range(4)]
-		
-		self.pieces = [i for i in range(16)]
-
-		self.used = []
-
-	def __str__(self):
-		s = ""
-		for r in self.spaces:
-			s += f"{dpiece(r[0])} | {dpiece(r[1])} | {dpiece(r[2])} | {dpiece(r[3])}\n"
-		return s
-	
-	def __repr__(self):
-		s = ""
-		for r in self.spaces:
-			s += f"{dpiece(r[0])} | {dpiece(r[1])} | {dpiece(r[2])} | {dpiece(r[3])}\n"
-		return s
-
-	# Performs a single move on the board and updates availability accordingly
-	def makeMove(self, piece: int, loc: tuple[int,int]):
-		if self.spaces[loc[0]][loc[1]] is None and piece is not None and piece not in self.used:
-			self.spaces[loc[0]][loc[1]] = piece
-			self.pieces.remove(piece)
-			self.used.append(piece)
-		else:
-			print("Illegal move attempted")
-
-	# True if a zone on the current board contains a quarto
-	def quarto(self):
-		for zone in self.zones():
-				if maxShareCount(pieceList(zone)) == 4:
-					return True	
-		return False
-
-	def boardUtil(self):
-		
-		total = 0
-
-		for zone in self.zones():
-			val = maxShareCount(pieceList(zone))
-			if val == 4:
-				return 1000
-			#elif val == 3:
-			#	total += 10
-			#elif val == 2:
-			#	total += 5
-		
-		return 0
-		
-	def zones(self):
-		l = len(self.spaces)
-
-		# Rows
-		z = self.spaces.copy()
-		
-		# Columns
-		for i in range(l):
-			z.append([row[i] for row in self.spaces])
-
-		# Diagonals
-		z.append([self.spaces[i][i] for i in range(l)])
-		z.append([self.spaces[i][l-1-i] for i in range(l)])
-
-		# Sub-squares
-		if self.adv:
-			for i in range(l-1):
-				for j in range(l-1):
-					z.append([self.spaces[i][j],self.spaces[i][j+1],self.spaces[i+1][j],self.spaces[i+1][j+1]])
-
-		return z
-
-	def isFull(self):
-		if all(all((self.spaces[i][j] is not None) for j in range(len(self.spaces[i]))) for i in range(len(self.spaces))):
-			return True
-		return False
-	
-	def openSpaces(self):
-		open = []
-		for x in range(4):
-			for y in range(4):
-				if self.spaces[x,y] is None:
-					open.append((x,y))
-		return open
-
-	def copy(self):
-
-		bc = Board(self.adv)
-		
-		bc.pieces = self.pieces
-		bc.used = self.used
-		bc.spaces = self.spaces
-
-		return bc
-'''
 
 class QuartoState:
 
 	# Initialize
 	# Board: 2D array populated with None
 	# Pieces: List 0 through 15
-	def __init__(self, adv=False, setFirst=False):
-		self.board = [[None for _ in range(4)] for _ in range(4)]
-		self.pieces = list(range(16))
-		self.nextPiece = None
-		self.player = 1
-		self.adv = adv
-		self.boardVal = None
-		if setFirst:
-			self.setNext(np.random.choice(self.pieces))
+	def __init__(self,training=False,rewardVal=1):
+		self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+		# Board state
+		self.board = [[None for _ in range(4)] for _ in range(4)]	# Empty 2D 4x4 grid
+		self.pieces = list(range(16))								# List of available pieces
+		self.nextPiece = None										# Next piece to play
+		self.done = False											# Is Terminal
+		if training:
+			self.movePickPiece(np.random.choice(self.pieces))
+		self.rewardVal = rewardVal									# Optional win reward value
 
 	def __str__(self):
 		s = ""
@@ -145,63 +36,194 @@ class QuartoState:
 		return s
 
 	def reset(self):
+		'''
+		Reset Quarto State to initial empty board
+		'''
 		self.board = [[None for _ in range(4)] for _ in range(4)]
 		self.pieces = list(range(16))
-		self.setNext(np.random.choice(self.pieces))
-		self.player = 1
-		self.boardVal = None
+		self.nextPiece = None
+		self.done = False
+		self.movePickPiece(np.random.choice(self.pieces))
 		return self
 
-	# Is State Terminal
 	def terminal(self):
-		if self.quarto() or self.isDraw():
+		'''
+		Returns:
+		bool: True if state is terminal, False otherwise
+		'''
+		if self.quarto() or self.draw():
+			return True	# Terminal state found
+		return False
+	
+	def quarto(self):
+		'''
+		Returns:
+		bool: True if state contains a Quarto, False otherwise
+		'''
+
+		l = len(self.board)
+
+		# Check Rows for winning lines
+		for row in self.board:
+			frow = pieceList(row)
+			if len(frow) == 4 and sharedTraits(frow) > 0:
+				return True
+
+		# Check columns for winning lines
+		for col in [[row[i] for row in self.board] for i in range(l)]:
+			fcol = pieceList(col)
+			if len(fcol) == 4 and sharedTraits(fcol) > 0:
+				return True
+		
+		# Check diagonals for winning lines
+		for diag in [[self.board[i][i] for i in range(l)],[self.board[i][l-i-1] for i in range(l)]]:
+			fdiag = pieceList(diag)
+			if len(fdiag) == 4 and sharedTraits(fdiag) > 0:
+				return True
+			
+		return False
+
+	def draw(self):
+		'''
+		Returns:
+		bool: True if the board is a draw, False otherwise
+		'''
+		if all(all((self.board[i][j] is not None) for j in range(len(self.board[i]))) for i in range(len(self.board))) and not self.quarto():
 			return True
 		return False
 	
-	# Make a move on the board
 	def move(self,loc,piece):
+		'''
+		Performs an action on the board. Chooses a location to place the current piece, and selects the next piece to be played.
+
+		Parameters:
+		loc (int,int): A tuple of the form (x,y), representing the location on the board
+		piece (int): An integer representing a piece
+
+		Returns:
+		bool: True if board is terminal after moving piece
+		'''
 		x,y = loc
-		self.board[x][y] = self.nextPiece
-		self.nextPiece = piece
+		self.board[x][y] = self.nextPiece	# Place piece on board
+		self.nextPiece = piece				# Set next piece to chosen piece
 		if piece is not None:
-			self.pieces[piece] = None
-		self.player = self.player * -1
-		self.updateStateValue()
+			self.pieces[piece] = None		# Remove from available pieces
+		if self.quarto() or self.draw():
+			self.done = True				# Check if now in terminal state
+		return self.done
 
 	def moveSetPiece(self,loc):
+		'''
+		Performs half of an action on the board, placing a piece on it
+		
+		Parameters:
+		loc (int,int): A tuple of the form (x,y), representing the location on the board
+		'''
 		x,y = loc
 		self.board[x][y] = self.nextPiece
 		self.nextPiece = None
-		self.updateStateValue()
 
+	# Pick Piece
 	def movePickPiece(self,piece):
+		'''
+		Performs half of an action in the state, choosing the next piece to be played
+		
+		Parameters:
+		piece (int): An integer representing a piece
+		'''
 		self.nextPiece = piece
 		self.pieces[piece] = None
-		self.player = self.player * -1
-		self.updateStateValue()
-
-	# Manually select next piece
-	def setNext(self,piece):
-		self.nextPiece = piece
-		self.pieces[piece] = None
-
-	def setPlayer(self,player):
-		self.player = player
 
 	def getBoard(self):
+		'''
+		Returns:
+		list[list[int]]: A copy of the board
+		'''
 		return self.board
 	
 	def getNextPiece(self):
+		'''
+		Returns:
+		int: A copt of the next piece
+		'''
 		return self.nextPiece
 	
 	def getPieces(self):
+		'''
+		Returns:
+		list[int]: A list of available pieces
+		'''
 		return self.pieces
 
-	def encode(self):
-		return getEncode(self.board,self.nextPiece,self.pieces,self.player)
+	@staticmethod
+	def encodePiece(p):
+		'''
+		Encode and normalize a piece
 
-	# Set of all possible actions
+		Parameters:
+		p (int): A piece
+
+		Returns:
+		list[float]: A list with a single element, the normalized representation of a piece
+		'''
+		return [(p+1)/16 if p is not None else 0]
+		#return [int(bit) for bit in f"{p:04b}"]
+	
+	@staticmethod
+	def encodePieceList(ps):
+		'''
+		Encode list of available pieces
+
+		Parameters:
+		ps (list[int]): A list of pieces
+
+		Returns:
+		list[bool]: A list of booleans, 1 if piece is present, 0 otherwise
+		'''
+		seq = [0 for _ in range(16)]
+		for piece in ps:
+			if piece is not None:
+				seq[piece] = 1
+		return seq
+
+	@staticmethod
+	def encodeBoard(b: list[list[int]]):
+		'''
+		Encode the board
+
+		Parameters:
+		b (list[list[int]]): A representation of a board
+
+		Returns:
+		list[float]: A flattened vector of normalized board placements
+		'''
+		seq = []
+		for row in b:
+			for sp in row:
+				if sp is not None:
+					seq.append((sp + 1)/16)
+				else:
+					seq.append(0)
+		return seq
+
+	def encode(self):
+		'''
+		Encodes the current state
+
+		Returns:
+		Tensor: An encoded board vector
+		Tensor: An encoded vector containing the next piece and the available piece list
+		'''
+		encodedBoard = self.encodeBoard(self.board)
+		encodedNextPiece = self.encodePiece(self.nextPiece)
+		encodedPieceList = self.encodePieceList(self.pieces)
+		return torch.tensor(encodedBoard,dtype=torch.float,device=self.device), torch.tensor((encodedNextPiece + encodedPieceList),dtype=torch.float,device=self.device)
+
 	def actions(self):
+		'''
+		Returns:
+		list[(int,int),int]: A list of possible actions
+		'''
 		l = len(self.board)
 		a = []
 		for x in range(l):
@@ -216,105 +238,24 @@ class QuartoState:
 						a.append(((x,y),None))
 		return a
 	
-	# Reward value for state
-	# Quarto results in -1000 (if quarto and you're turn, you didn't place the winning piece)
-	# Draw results in 0
-	# Board value favors pieces on the board
-	def reward(self):
-		if self.quarto(): return -1000 * self.player
-		if self.isDraw(): return 0
-		return self.getBoardValue()
-	
-	# Get Board Value
-	def getBoardValue(self):
-		if self.boardVal is None:
-			self.boardVal = boardValue(self.board,self.adv) * self.player
-		return self.boardVal
-	
-	def updateStateValue(self):
-		value = boardValue(self.board)
-		if value == 1000:
-			value *= self.player * -1
-		self.boardVal = value
-	
 	def step(self, action):
+		'''
+		Performs an action and calculates the reward and terminal status
+
+		Parameters:
+		action ((int,int),int): The action to be taken
+
+		Returns:
+		QuartoState: A reference to itself
+		int: The reward for the action
+		bool: The terminal status
+		'''
+		reward = 0
 		loc,piece = action
 		if valid(loc,self.board,piece,self.pieces):
-			if loc is None:
-				loc = finalPlace(self.board)
-			self.move(loc,piece)
-			return self, self.getBoardValue(),self.terminal()
-	
-	# Get Quarto Status
-	def quarto(self):
-		if abs(self.getBoardValue()) == 1000:
-			return True
-		return False
-	
-	# Get Draw Status
-	def isDraw(self):
-		if all(all((self.board[i][j] is not None) for j in range(len(self.board[i]))) for i in range(len(self.board))) and not self.quarto():
-			return True
-		return False
-'''
-class OldState:
+			res = self.move(loc,piece)
+			if res:
+				if self.quarto():
+					reward = self.rewardVal
 
-	def __init__(self, board: Board, player, nextPiece: int):
-		
-		self.board = board
-		self.player = player
-		self.nextPiece = nextPiece
-		self.previousPiece = None
-		self.previousLoc = None
-	
-	def quarto(self):
-		return self.board.quarto()
-	
-	def dead(self):
-		return self.board.isFull()
-	
-	def terminal(self):
-		if self.dead() or self.quarto():
-			return True
-		return False
-	
-	def copy(self):
-		return State(self.board, self.player, self.nextPiece)
-	
-	def move(self,loc,piece):
-		self.board.makeMove(self.nextPiece,loc)
-		self.previousPiece = self.nextPiece
-		self.previousLoc = loc
-		self.nextPiece = piece
-
-	def placePiece(self,loc):
-		print("Placing at:",loc)
-		self.board.makeMove(self.nextPiece, loc)
-		print(self.board)
-		self.previousPiece = self.nextPiece
-		self.previousLoc = loc
-		self.nextPiece = None
-
-	def choosePiece(self,piece):
-		self.nextpiece = piece
-
-	def lastMove(self):
-		return self.previousPiece, self.previousLoc
-	
-	def successors(self) -> list['State']:
-
-		successors = []
-
-		for loc in self.board.openSpaces():
-			for piece in self.board.pieces:
-				if piece != self.nextPiece:
-					s = self.copy()
-					s.move(self.nextPiece, loc, piece)
-					successors.append(s)
-
-		return successors
-	
-	def utility(self):
-
-		return self.board.boardUtil()
-'''
+		return self, reward, self.done

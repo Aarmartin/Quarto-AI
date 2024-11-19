@@ -1,12 +1,12 @@
-import torch
+###########################
+# Piece and Piece Display #
+###########################
 
-##########
-# Pieces #
-##########
-
+# Format piece string representation
 def b(p):
 	return f"{p:04b}"
 
+# Convert bit string to characters
 def dpiece(p):
 	if p is not None:
 		s = b(p)
@@ -34,9 +34,11 @@ def dpiece(p):
 		return t
 	return None
 
+# Display all characters within a zone
 def dzone(z):
 	return list(map(lambda x: dpiece(x) ,z))
 
+# Filter None from a list of pieces
 def pieceList(ps):
 	return list(filter(lambda x: x is not None, ps))
 
@@ -44,180 +46,150 @@ def pieceList(ps):
 # Comparing Piece Traits #
 ##########################
 
-def compare(b1:int ,b2:int):
+def comparePieces(b1:int ,b2:int):
+	'''
+	Compare to piece traits by their associated binary values
+
+	Parameters:
+	b1 (int): First piece
+	b2 (int): Second piece
+
+	Returns:
+	int: A binary string representing which traits are shared, 1 for shared, 0 otherwise
+	'''
 	return ~(b1^b2) & 0b1111
 
-def comparePieces(bs: list[int]):
+def comparePieceList(bs: list[int]):
+	'''
+	Compare piece traits across list of pieces
+
+	Parameters:
+	bs (list[int]): A list of pieces
+
+	Returns:
+	int: A binary string representing which traits are shared, 1 for shared, 0 otherwise
+	'''
 	if len(bs) == 0: return 0b0000
 	p = bs[0]
 	s = 0b1111
 	for b in bs[1:]:
-		s &= compare(p,b)
+		s &= comparePieces(p,b)
 		p = b
 	return s
 
 def sharedTraits(bs: list[int]):
-	return bin(comparePieces(bs)&0b1111).count('1')
+	'''
+	Counts the number of shared traits for pieces in a list
 
-#########################
-# Counting Piece Traits #
-#########################
+	Parameters:
+	bs (list[int]): A list of pieces
 
-# Maximum number of pieces with a shared trait
-def maxShareCount(ps):
-	
-	m = 0
+	Returns:
+	int: A count of the number of shared traits across all pieces
+	'''
+	return bin(comparePieceList(bs)&0b1111).count('1')
 
-	for i in range(4):
-		z = sum(1 for bs in ps if not (bs & (1 << i)))
-		o = sum(1 for bs in ps if (bs & (1 << i)))
-
-		m = max(m,z,o)
-
-	return m
-
-########################
-# GUI Helper Functions #
-########################
-
-
-
-########################
-# Board Util Functions #
-########################
-
-def boardValue(b, adv=False):
-	l = len(b)
-	s = 0
-
-	for row in b:
-		pl = pieceList(row)
-		if sharedTraits(pl) > 0:
-			if len(pl) == 4:
-				return 1000
-			elif len(pl) == 3:
-				s += 10
-			elif len(pl) == 2:
-				s += 5
-
-	for col in [[row[i] for row in b] for i in range(l)]:
-		pl = pieceList(col)
-		if sharedTraits(pl) > 0:
-			if len(pl) == 4:
-				return 1000
-			elif len(pl) == 3:
-				s += 10
-			elif len(pl) == 2:
-				s += 5
-
-	for diag in [[b[i][i] for i in range(l)],[b[i][i-1] for i in range(l)]]:
-		pl = pieceList(diag)
-		if sharedTraits(pl) > 0:
-			if len(pl) == 4:
-				return 1000
-			elif len(pl) == 3:
-				s += 10
-			elif len(pl) == 2:
-				s += 5
-
-	if adv:
-		for i in range(l-1):
-			for j in range(l-1):
-				pl = pieceList(b[i][j],b[i][j+1],b[i+1][j],b[i+1][j+1])
-				if sharedTraits(pl) > 0:
-					if len(pl) == 4:
-						return -1000
-					elif len(pl) == 3:
-						s += 10
-					elif len(pl) == 2:
-						s += 5
-
-	return s
-
-def finalPlace(b):
-	loc = None
-	for x, row in enumerate(b):
-		for y, val in enumerate(row):
-			if val is None and loc is None:
-				loc = (x,y)
-			elif val is None and loc is not None:
-				return
-	return loc
-
-def getPieceEncode(p):
-	return [int(bit) for bit in f"{p:04b}"]
-
-def getEncode(b,p,ps,player) -> torch.FloatTensor:
-	boardEncode = []
-
-	if player > 0:
-		boardEncode.extend([1])
-	else:
-		boardEncode.extend([0])
-
-	for row in b:
-		for piece in row:
-			if piece is None:
-				boardEncode.extend([0,0,0,0,0])
-			else:
-				boardEncode.extend([1] + getPieceEncode(piece))
-
-	if p is not None:
-		boardEncode.extend(getPieceEncode(p))
-	else:
-		boardEncode.extend([0,0,0,0])
-
-	for piece in ps:
-		if piece is None:
-			boardEncode.extend([0])
-		else:
-			boardEncode.extend([1])
-
-	return torch.FloatTensor(boardEncode)
+###########################
+# Convert Action Encoding #
+###########################
 
 def encodeAction(action):
-	(loc, piece) = action
-	if loc is None or piece is None:
-		return 256
+	'''
+	Encode an action, converting to an int
+
+	Parameters:
+	action ((int,int),int): An action
+
+	Returns:
+	int: The integer value of the encoded action
+	'''
+	loc, piece = action
 	x,y = loc
+	if piece is None:
+		return x * 4 + y + 256
 	return x * 4 * 16 + y * 16 + piece
 
 def decodeAction(action):
-	if action == 256:
-		return (None,None)
-	loc = action // 16
-	piece = action % 16
-	x,y = divmod(loc,4)
-	return ((x,y),piece)
+	'''
+	Decode an action, converting to a tuple
 
-def valid(loc,b,p,ps):
-	if loc is None:
-		loc = finalPlace(b)
-	if loc is None:
-		return False
+	Parameters:
+	action (int): An integer representing an action
+
+	Returns:
+	((int,int),int): The associated action
+	'''
+	if action < 256:
+		loc = action // 16
+		piece = action % 16
+		x,y = divmod(loc,4)
+		return ((x,y),piece)
+	else:
+		action = action - 256
+		x,y = divmod(action,4)
+		return ((x,y),None)
+
+#################
+# Move Validity #
+#################
+
+def valid(loc,b: list[list[int]],p,ps):
+	'''
+	Returns the validity of an action
+
+	Parameters:
+	loc (int,int): The proposed location
+	b (list[list[int]]): The board
+	p (int): The proposed piece
+	ps (list[int]): The list of available pieces
+
+	Returns:
+	bool: True if the action is valid, False otherwise
+	'''
 	x,y = loc
 
-	if p is None and pieceList(ps):
+	if p is None:
+		c = 0
+		for row in b:
+			c += row.count(None)
+		if b[x][y] is None and c == 1:
+			return True
 		return False
 
-	if (b[x][y] is None and p is None and not pieceList(ps)) or (b[x][y] is None and ps[p] is not None):
+	if (b[x][y] is None and ps[p] is not None):
 		return True
 
 	return False
 
 def validPlace(loc,b):
-	if loc is None:
-		return False
+	'''
+	Returns the validity of a location
+
+	Paremeters:
+	loc (int,int): The proposed location
+	b (list[list[int]]): The board
+
+	Returns:
+	bool: True if the action is valid, False otherwise
+	'''
 	x,y = loc
 	if b[x][y] is None:
 		return True
 	return False
 
 def validPiece(p, ps):
+	'''
+	Returns the validity of a piece
+
+	Paremeters:
+	p (int): The proposed piece
+	ps (list[int]): The list of available pieces
+
+	Returns:
+	bool: True if the action is valid, False otherwise
+	'''
 	if p is None:
 		return False
 	if ps[p] is not None:
 		return True
 	return False
-
-__all__ = ['getEncode','encodeAction','decodeAction','boardValue','sharedTraits','pieceList','dpiece','dzone','maxShareCount','valid','validPlace','validPiece','finalPlace']
