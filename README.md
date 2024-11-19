@@ -155,6 +155,11 @@ Another improvement would be identifying intermediary rewards in moves that affe
 Key moments in this game rely heavily on forward thinking, and analyzing the remaining pieces. Wins can be forced by limiting the leftover available pieces to only ones the create a win when your opponent hands it to you. However, determining the relationships that allow you to identify this and perform the right actions to result in it are incredibly complex. Abstracted relationship based state representations and intermediary rewards that identify patters that lead to these outcomes would greatly improve Q-Network effectiveness.
 
 ## Running a Game
+
+Install dependencies
+- torch torchvision torchaudio
+- tensorboard
+
 To run a graphical instance of a Quarto game against a computer, reference QuartoGUI.py and a specified model with:
 ```shell
 python QuartoGUI.py ./models/<model.model>

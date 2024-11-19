@@ -9,7 +9,7 @@ class Computer:
 
 		# Create agent, and load model
 		self.agent = DQNAgent()
-		self.agent.q_net.load_state_dict(torch.load(model,weights_only=False))
+		self.agent.q_net.load_state_dict(torch.load(model,weights_only=False,map_location=torch.device('cuda' if torch.cuda.is_available() else 'cpu')))
 		self.agent.q_net.eval()
 
 	def play(self,state):
